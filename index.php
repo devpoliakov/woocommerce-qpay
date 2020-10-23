@@ -46,6 +46,7 @@ function qpay_init_gateway_class() {
 	$this->secret_key = $this->testmode ? $this->get_option( 'test_secret_key' ) : $this->get_option( 'secret_key' );
 	$this->bank_id = $this->get_option( 'bank_id' );
 	$this->merchant_id = $this->get_option( 'merchant_id' );
+	$this->theme_id = $this->get_option( 'theme_id' );
  
 	// This action hook saves the settings
 	add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
@@ -102,6 +103,10 @@ function qpay_init_gateway_class() {
 			),			
 			'merchant_id' => array(
 				'title'       => 'Live Merchant ID',
+				'type'        => 'text'
+			),			
+			'theme_id' => array(
+				'title'       => 'Theme ID',
 				'type'        => 'text'
 			),
 			'secret_key' => array(
@@ -183,133 +188,150 @@ function qpay_init_gateway_class() {
 			// Add this action hook if you want your custom payment gateway to support it
 			do_action( 'woocommerce_credit_card_form_start', $this->id );
 
-				/* qpay hardcode integration */
-
-				$orderid = 7778;
-				$secret_key = $this->secret_key;
-				$bank_id = $this->bank_id;
-				$merchant_id = $this->merchant_id;
-				$payment_url = 'https://www.qpay.gov.qa/QPayOnePC/PaymentPayServlet';
-				$theme_id = '510000084';
-				$time_deference = 0;
-				function random_num($size) {
-					$alpha_key = '';
-					$keys = range('A', 'Z');
-					for ($i = 0; $i < 2; $i++) {
-						$alpha_key .= $keys[array_rand($keys)];
-					}
-					$length = $size - 2;
-					$key = '';
-					$keys = range(0, 9);
-					for ($i = 0; $i < $length; $i++) {
-						$key .= $keys[array_rand($keys)];
-					}
-					return $alpha_key . $key;
-				}
-				function generateRandomString($length = 18) {
-				    $characters = '0123456789';
-				    $charactersLength = strlen($characters);
-				    $randomString = '';
-				    for ($i = 0; $i < $length; $i++) {
-				        $randomString .= $characters[rand(0, $charactersLength - 1)];
-				    }
-				    return $randomString;
-				}
-				$pun_1 = $orderid.generateRandomString();
-				$pun_key = generateRandomString();
-				$mercnt_sess_id = random_num(23);
-				//$amnt = $this->cart->total() + $this->session->userdata('delivery_charge');
-				$amnt = 1;
-				$PAYONE_SECRET_KEY = $secret_key;
-				$formatedRequestDate = date('dmYHis');
-				$parameters = array();
-				$parameters['Action'] = '0';
-				$parameters['BankID'] = $bank_id;
-				$parameters['MerchantID'] = $merchant_id;
-				$parameters['CurrencyCode'] = '634';
-				$parameters['Amount'] = $amnt * 100;
-				$parameters['PUN'] = $pun_key;  // order id
-				$parameters['PaymentDescription'] = urlencode("PaymentDescription");
-				$parameters['MerchantModuleSessionID'] = $mercnt_sess_id;  //alphanumeric unique id generated
-				$parameters['TransactionRequestDate'] = $formatedRequestDate;
-				//$parameters['Quantity'] = count($this->cart->contents());
-				$parameters['Quantity'] = count(array(1));
-				$parameters['Lang'] = 'EN';
-				$parameters['NationalID'] = "";
-				$parameters['ExtraFields_f14'] = site_url('success');
-				$parameters['ExtraFields_f3'] = $theme_id;
-				ksort($parameters);
-				$orderedString = $PAYONE_SECRET_KEY;
-				foreach($parameters as $k=>$param){
-				//echo $param.chr(10);
-				 $orderedString .= $param;
-				}
-				/////echo "--- Ordered String ---".chr(10);
-				//echo $orderedString.chr(10);
-				$secureHash = hash('sha256', $orderedString, false);
-				//echo "--- Hash Value ---".chr(10);
-				//echo $secureHash;
-				$attributesData = array();
-				$attributesData['Action'] = "0";
-				$attributesData['TransactionRequestDate'] = $formatedRequestDate;
-				$attributesData['Amount'] = $amnt * 100;
-				$attributesData['NationalID'] = "";
-				$attributesData['PUN'] = $pun_key;
-				$attributesData['MerchantModuleSessionID'] = $mercnt_sess_id;
-				$attributesData['MerchantID'] = $merchant_id;
-				$attributesData['BankID'] = $bank_id;
-				$attributesData['Lang'] = "EN";
-				$attributesData['CurrencyCode'] = "634";
-				$attributesData['ExtraFields_f3'] = $theme_id;
-				$attributesData['ExtraFields_f14'] = site_url('success');
-				//$attributesData['Quantity'] = count($this->cart->contents());
-				$attributesData['Quantity'] = count(array(1));
-				$attributesData['PaymentDescription'] = urldecode("PaymentDescription");
-				$attributesData['SecureHash'] = $secureHash;
-				$attributesData['PG_REDIRECT_URL'] = $payment_url;
-				//var_dump($attributesData);die;
-				$_SESSION['PayOneParams'] = $attributesData;
-				$parameters = $_SESSION['PayOneParams'];
-				//var_dump($parameters);
-				$redirectURL = $parameters["PG_REDIRECT_URL"];
-				$amount = $parameters["Amount"];
-				$currencyCode = $parameters["CurrencyCode"];
-				$pun = $parameters["PUN"];
-				$merchantModuleSessionID = $parameters["MerchantModuleSessionID"];
-				$paymentDescription = $parameters["PaymentDescription"];
-				$nationalID = $parameters["NationalID"];
-				$merchantID = $parameters["MerchantID"];
-				$bankID = $parameters["BankID"];
-				$lang = $parameters["Lang"];
-				$action = $parameters["Action"];
-				$secureHash = $parameters["SecureHash"];
-				$transactionRequestDate = $parameters["TransactionRequestDate"];
-				$extraFields_f3 = $parameters["ExtraFields_f3"];
-				$extraFields_f14 = $parameters["ExtraFields_f14"];
-				$quantity = $parameters["Quantity"];
-
-
-				 ?>
-				 <input type="text" name="Amount" value="<?php echo $amount; ?>" />
-				<input type="text" name="CurrencyCode" value="<?php echo $currencyCode ; ?>" />
-				<input type="text" id="pun_id" name="PUN" value="<?php echo $pun; ?>" />
-				<input type="text" name="MerchantModuleSessionID" value="<?php echo $merchantModuleSessionID ;?>" />
-				<input type="text" name="PaymentDescription" value="<?php echo $paymentDescription; ?>" />
-				<input type="text" name="NationalID" value="<?php echo $nationalID ;?>" />
-				<input type="text" name="MerchantID" value="<?php echo $merchantID; ?>" />
-				<input type="text" name="BankID" value="<?php echo $bankID ; ?>" />
-				<input type="text" name="Lang" value="<?php echo $lang; ?>" />
-				<input type="text" name="Action" value="<?php echo $action; ?>" />
-				<input type="text" id="hash_value" name="SecureHash" value="<?php echo $secureHash; ?>" />
-				<input type="text" id="transaction_date" name="TransactionRequestDate" value="<?php echo $transactionRequestDate; ?>" />
-				<input type="text" name="ExtraFields_f3" value="<?php echo $extraFields_f3; ?>" />
-				<input type="text" name="ExtraFields_f14" value="<?php echo $extraFields_f14; ?>" />
-				<input type="text" name="Quantity" value="<?php echo $quantity; ?>" />
-				 <?php
 					do_action( 'woocommerce_credit_card_form_end', $this->id );
 				 
 					echo '<div class="clear"></div></fieldset>';
 		 
 		}	
+
+
+		public function process_payment( $order_id ) {
+    
+		    global $woocommerce;
+ 
+			$order = new WC_Order( $order_id );
+/*
+			echo "<pre>";
+				var_dump($order);
+			echo "</pre>";
+			exit;
+			*/
+
+        /* qpay hardcode integration */
+
+        $secret_key = $this->secret_key;
+        $bank_id = $this->bank_id;
+        $merchant_id = $this->merchant_id;
+        $payment_url = 'https://pgtest3.qcb.gov.qa/QPayOnePC/PaymentPayServlet';
+        $theme_id = '510000084';
+        $time_deference = 0;
+        function random_num($size) {
+          $alpha_key = '';
+          $keys = range('A', 'Z');
+          for ($i = 0; $i < 2; $i++) {
+            $alpha_key .= $keys[array_rand($keys)];
+          }
+          $length = $size - 2;
+          $key = '';
+          $keys = range(0, 9);
+          for ($i = 0; $i < $length; $i++) {
+            $key .= $keys[array_rand($keys)];
+          }
+          return $alpha_key . $key;
+        }
+
+        $mercnt_sess_id = random_num(23);
+
+        $amnt = 1;
+        $PAYONE_SECRET_KEY = $secret_key;
+        $formatedRequestDate = date('dmYHis');
+        $parameters = array();
+        $parameters['Action'] = '0';
+        $parameters['BankID'] = $bank_id;
+        $parameters['MerchantID'] = $merchant_id;
+        $parameters['CurrencyCode'] = '634';
+        $parameters['Amount'] = $order->get_total() * 100;
+        $parameters['PUN'] = $order_id;  // order id
+        $parameters['PaymentDescription'] = urlencode("PaymentDescription");
+        $parameters['MerchantModuleSessionID'] = $mercnt_sess_id;  //alphanumeric unique id generated
+        $parameters['TransactionRequestDate'] = $formatedRequestDate;
+        //$parameters['Quantity'] = count($this->cart->contents());
+        $parameters['Quantity'] = count(array(1));
+        $parameters['Lang'] = 'en';
+        $parameters['NationalID'] = "";
+        $parameters['ExtraFields_f14'] = 'https://plaza-hollandi.com/success';
+        //$parameters['ExtraFields_f3'] = $theme_id;
+        ksort($parameters);
+        $orderedString = $PAYONE_SECRET_KEY;
+
+        foreach($parameters as $k=>$param){
+         $orderedString .= $param;
+        }
+
+        $secureHash = hash('sha256', $orderedString, false);
+
+
+
+// Payload would look something like this.
+			$payload = array(
+);
+
+        $payload['Action'] = "0";
+        $payload['TransactionRequestDate'] = $formatedRequestDate;
+        $payload['Amount'] = $order->get_total() * 100;
+        $payload['NationalID'] = "";
+        $payload['PUN'] = $order_id;
+        $payload['MerchantModuleSessionID'] = $mercnt_sess_id;
+        $payload['MerchantID'] = $merchant_id;
+        $payload['BankID'] = $bank_id;
+        $payload['Lang'] = "en";
+        $payload['CurrencyCode'] = "634";
+        //$payload['ExtraFields_f3'] = $theme_id;
+        $payload['ExtraFields_f14'] = 'https://plaza-hollandi.com/success';
+        $payload['Quantity'] = count(array(1));
+        $payload['PaymentDescription'] = urldecode("PaymentDescription");
+        $payload['SecureHash'] = $secureHash;
+        $payload['PG_REDIRECT_URL'] = $payment_url;
+        //$payload['qpay_params_log'] = $qpay_params_log;
+
+
+
+		    $environment_url = 'https://pgtest3.qcb.gov.qa/QPayOnePC/PaymentPayServlet';
+		    
+		    $response = wp_remote_post( $environment_url, array(
+                    'body'      => http_build_query( $payload )
+    
+                ) );
+		
+			// Retrieve the body's response if no errors found
+			$response_body = wp_remote_retrieve_body( $response );
+			$response_headers = wp_remote_retrieve_headers( $response );
+
+			//use this if you need to redirect the user to the payment page of the bank.
+			$querystring = http_build_query( $payload );
+
+			if ( is_wp_error( $response ) ) {
+			        // Return failure redirect
+			        return array(
+			            'result'    => 'failure',
+			            'redirect'  => 'failed.php'
+			        );
+			    }
+			    else{
+
+			// Return thankyou redirect
+				    return array(
+				        'result'    => 'success',
+				        'redirect'  => $this->get_return_url( $order )
+				    );
+				}
+		    /*        
+		    // Mark as on-hold (we're awaiting the payment)
+		    $order->update_status( 'on-hold', __( 'Awaiting offline payment', 'wc-gateway-offline' ) );
+		            
+		    // Reduce stock levels
+		    $order->reduce_order_stock();
+		            
+		    // Remove cart
+		    WC()->cart->empty_cart();
+		            
+		    // Return thankyou redirect
+		    return array(
+		        'result'    => 'success',
+		        'redirect'  => $this->get_return_url( $order )
+		    );
+
+		    */
+		}
  	}
 }
