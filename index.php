@@ -55,7 +55,7 @@ function qpay_init_gateway_class() {
 	add_action( 'wp_enqueue_scripts', array( $this, 'payment_scripts' ) );
  
 	// You can also register a webhook here
-	// add_action( 'woocommerce_api_{webhook name}', array( $this, 'webhook' ) );
+	add_action( 'woocommerce_api_qpay-success', array( $this, 'webhook' ) );
  }
  
 	public function init_form_fields(){
@@ -200,13 +200,22 @@ function qpay_init_gateway_class() {
 		    global $woocommerce;
  
 			$order = new WC_Order( $order_id );
+
+			// Mark as on-hold (we're awaiting the payment)
+		    $order->update_status( 'on-hold', __( 'Awaiting offline payment', 'wc-gateway-offline' ) );
+		            
+		    // Reduce stock levels
+		    $order->reduce_order_stock();
+
+		    // Remove cart
+		    WC()->cart->empty_cart();
+
 /*
 			echo "<pre>";
 				var_dump($order);
 			echo "</pre>";
 			exit;
-			*/
-
+*/
         /* qpay hardcode integration */
 
         $secret_key = $this->secret_key;
@@ -249,7 +258,7 @@ function qpay_init_gateway_class() {
         $parameters['Quantity'] = count(array(1));
         $parameters['Lang'] = 'en';
         $parameters['NationalID'] = "";
-        $parameters['ExtraFields_f14'] = 'https://plaza-hollandi.com/success';
+        $parameters['ExtraFields_f14'] = 'https://plaza-hollandi.com/wc-api/qpay-success';
         //$parameters['ExtraFields_f3'] = $theme_id;
         ksort($parameters);
         $orderedString = $PAYONE_SECRET_KEY;
@@ -277,7 +286,7 @@ function qpay_init_gateway_class() {
         $payload['Lang'] = "en";
         $payload['CurrencyCode'] = "634";
         //$payload['ExtraFields_f3'] = $theme_id;
-        $payload['ExtraFields_f14'] = 'https://plaza-hollandi.com/success';
+        $payload['ExtraFields_f14'] = 'https://plaza-hollandi.com/wc-api/qpay-success';
         $payload['Quantity'] = count(array(1));
         $payload['PaymentDescription'] = urldecode("PaymentDescription");
         $payload['SecureHash'] = $secureHash;
@@ -308,22 +317,17 @@ function qpay_init_gateway_class() {
 			        );
 			    }
 			    else{
+			
 
-			// Return thankyou redirect
-				    return array(
-				        'result'    => 'success',
-				        'redirect'  => $this->get_return_url( $order )
-				    );
+			return array(
+			                'result'   => 'success',
+			                'redirect' => $environment_url . '?' . $querystring,
+			            );
 				}
 		    /*        
-		    // Mark as on-hold (we're awaiting the payment)
-		    $order->update_status( 'on-hold', __( 'Awaiting offline payment', 'wc-gateway-offline' ) );
+		    
 		            
-		    // Reduce stock levels
-		    $order->reduce_order_stock();
-		            
-		    // Remove cart
-		    WC()->cart->empty_cart();
+		    
 		            
 		    // Return thankyou redirect
 		    return array(
