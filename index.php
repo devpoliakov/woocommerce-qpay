@@ -128,12 +128,48 @@ function qpay_init_gateway_class() {
 		}
  
 		public function webhook() {
- 
-			$order = wc_get_order( $_GET['id'] );
-			$order->payment_complete();
-			$order->reduce_order_stock();
+
+			$response_parameters = $_POST;
+
+			ksort($response_parameters);
+	        $orderedString = $this->secret_key;
+
+
+	        foreach ($response_parameters as $k => $param) {
+                if (($k != "Response_SecureHash") && ($param != "null") && ($k != "Response_StatusMessage")) {
+                    $orderedString .= $param;
+                }
+                if ($k == "Response_StatusMessage") {
+                    $msg = str_replace(' ', '+', $param);
+                    $orderedString .= $msg;
+                }
+            }
+	        $secureHash = hash('sha256', $orderedString, false);
+/*
+			echo "<pre>";
+				var_dump($response_parameters);
+				var_dump($_POST);
+				var_dump($orderedString);
+				var_dump($secureHash);
+			echo "</pre>";
+*/
+
+	        $order = new WC_Order( $_POST['Response_PUN'] );
+
+	        $status_code =  $_POST['Response_Status'];
+	        $receivedSecureHash =  $_POST['Response_SecureHash'];
+
+	        if (($status_code == "0000") && ($receivedSecureHash == $secureHash)) {		
+				$order->payment_complete();
+				$order->reduce_order_stock();
+			}else if (($status_code == "2996") && ($receivedSecureHash == $secureHash)) {
+				$order->update_status( 'cancelled', __( 'Cancelled', '' ) );
+			}else{
+				$order->update_status( 'failed', __( 'Failed', '' ) );
+			}
 		 
-			//update_option('webhook_debug', $_GET);
+			wp_redirect( home_url() ); 
+			exit;
 		}
 
 		public function payment_scripts() {
@@ -202,20 +238,14 @@ function qpay_init_gateway_class() {
 			$order = new WC_Order( $order_id );
 
 			// Mark as on-hold (we're awaiting the payment)
-		    $order->update_status( 'on-hold', __( 'Awaiting offline payment', 'wc-gateway-offline' ) );
+		    $order->update_status( 'on-hold', __( 'Awaiting offline payment', '' ) );
 		            
 		    // Reduce stock levels
-		    $order->reduce_order_stock();
+		    //$order->reduce_order_stock();
 
 		    // Remove cart
 		    WC()->cart->empty_cart();
 
-/*
-			echo "<pre>";
-				var_dump($order);
-			echo "</pre>";
-			exit;
-*/
         /* qpay hardcode integration */
 
         $secret_key = $this->secret_key;
