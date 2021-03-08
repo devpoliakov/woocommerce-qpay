@@ -14,6 +14,7 @@ function qpay_add_gateway_class( $gateways ) {
 	return $gateways;
 }
  
+ require_once ('inc/hooks.php');
 
 add_action( 'plugins_loaded', 'qpay_init_gateway_class' );
 function qpay_init_gateway_class() {
@@ -152,6 +153,8 @@ function qpay_init_gateway_class() {
 				var_dump($orderedString);
 				var_dump($secureHash);
 			echo "</pre>";
+
+			exit;
 */
 
 	        $order = new WC_Order( $_POST['Response_PUN'] );
@@ -159,17 +162,43 @@ function qpay_init_gateway_class() {
 	        $status_code =  $_POST['Response_Status'];
 	        $receivedSecureHash =  $_POST['Response_SecureHash'];
 
+
 	        if (($status_code == "0000") && ($receivedSecureHash == $secureHash)) {		
-				$order->payment_complete();
-				$order->reduce_order_stock();
+				//$order->payment_complete();
+				//$order->reduce_order_stock();
+
+				$order->update_status( 'processing' );
+				
+				// payment email for admin
+				$wc_email = WC()->mailer()->get_emails()['WC_Email_New_Order'];
+			    $wc_email->settings['subject'] = __('{site_title} - Processing order ('.$_POST['Response_PUN'].') - {order_date}');
+			    $wc_email->settings['heading'] = __('Processing Order ('.$_POST['Response_PUN'].')'); 
+			    $wc_email->trigger( $_POST['Response_PUN'] );
+
+
 			}else if (($status_code == "2996") && ($receivedSecureHash == $secureHash)) {
-				$order->update_status( 'cancelled', __( 'Cancelled', '' ) );
+				$order->update_status( 'cancelled', __( 'Cancelled', '' ), true );
+				$order->add_order_note('cancell_note');
+				$email_order = WC()->mailer()->get_emails()['WC_Email_Cancelled_Order'];
+				//$email_order->trigger( $_POST['Response_PUN'] );
+
+				//$emailer->customer_invoice($order);				
 			}else{
 				$order->update_status( 'failed', __( 'Failed', '' ) );
+				$order->add_order_note('fail_note');
+				$email_order = WC()->mailer()->get_emails()['WC_Email_Failed_Order'];
+				//$email_order->trigger( $_POST['Response_PUN'] );
+
+				$emailer = new WC_Emails();
+				$emailer->customer_invoice($order);
 			}
+			
+
+				wp_redirect( $order->get_checkout_order_received_url() ); 
+				exit;
+
 		 
-			wp_redirect( home_url() ); 
-			exit;
+			
 		}
 
 		public function payment_scripts() {
@@ -224,7 +253,7 @@ function qpay_init_gateway_class() {
 			// Add this action hook if you want your custom payment gateway to support it
 			do_action( 'woocommerce_credit_card_form_start', $this->id );
 
-					do_action( 'woocommerce_credit_card_form_end', $this->id );
+			do_action( 'woocommerce_credit_card_form_end', $this->id );
 				 
 					echo '<div class="clear"></div></fieldset>';
 		 
@@ -241,7 +270,7 @@ function qpay_init_gateway_class() {
 		    $order->update_status( 'on-hold', __( 'Awaiting offline payment', '' ) );
 		            
 		    // Reduce stock levels
-		    //$order->reduce_order_stock();
+		    $order->reduce_order_stock();
 
 		    // Remove cart
 		    WC()->cart->empty_cart();
@@ -325,47 +354,18 @@ function qpay_init_gateway_class() {
 
 
 
-		    $environment_url = 'https://pgtest3.qcb.gov.qa/QPayOnePC/PaymentPayServlet';
-		    
-		    $response = wp_remote_post( $environment_url, array(
-                    'body'      => http_build_query( $payload )
-    
-                ) );
-		
-			// Retrieve the body's response if no errors found
-			$response_body = wp_remote_retrieve_body( $response );
-			$response_headers = wp_remote_retrieve_headers( $response );
-
-			//use this if you need to redirect the user to the payment page of the bank.
+		    $environment_url = 'https://pgtest3.qcb.gov.qa/QPayOnePC/PaymentPayServlet';		    
 			$querystring = http_build_query( $payload );
 
-			if ( is_wp_error( $response ) ) {
-			        // Return failure redirect
-			        return array(
-			            'result'    => 'failure',
-			            'redirect'  => 'failed.php'
-			        );
-			    }
-			    else{
-			
+			$middle_url = 'https://www.plaza-hollandi.com/';
 
 			return array(
 			                'result'   => 'success',
-			                'redirect' => $environment_url . '?' . $querystring,
+			                'redirect' => $middle_url . '?qpaymidleurl=true&' . $querystring,
+			                //'redirect' => $environment_url . '?' . $querystring,
 			            );
-				}
-		    /*        
-		    
-		            
-		    
-		            
-		    // Return thankyou redirect
-		    return array(
-		        'result'    => 'success',
-		        'redirect'  => $this->get_return_url( $order )
-		    );
+			    
 
-		    */
 		}
  	}
 }
