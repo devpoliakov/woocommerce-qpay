@@ -146,16 +146,6 @@ function qpay_init_gateway_class() {
                 }
             }
 	        $secureHash = hash('sha256', $orderedString, false);
-/*
-			echo "<pre>";
-				var_dump($response_parameters);
-				var_dump($_POST);
-				var_dump($orderedString);
-				var_dump($secureHash);
-			echo "</pre>";
-
-			exit;
-*/
 
 	        $order = new WC_Order( $_POST['Response_PUN'] );
 
@@ -357,12 +347,9 @@ function qpay_init_gateway_class() {
 		    $environment_url = 'https://pgtest3.qcb.gov.qa/QPayOnePC/PaymentPayServlet';		    
 			$querystring = http_build_query( $payload );
 
-			$middle_url = 'https://www.plaza-hollandi.com/';
-
 			return array(
 			                'result'   => 'success',
-			                'redirect' => $middle_url . '?qpaymidleurl=true&' . $querystring,
-			                //'redirect' => $environment_url . '?' . $querystring,
+			                'redirect' => $environment_url . '?' . $querystring,
 			            );
 			    
 
