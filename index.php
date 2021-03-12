@@ -5,6 +5,9 @@
  * Version: 1.0.1
  */
 
+if ( !class_exists( 'WooCommerce' ) ) 
+	return;
+
  /*
  * This action hook registers our PHP class as a WooCommerce payment gateway
  */
