@@ -6,11 +6,13 @@
  */
 
 if ( !class_exists( 'WooCommerce' )){
+    /*
     add_action( 'admin_notices', function(){
     	echo "<div class='notice notice-warning is-dismissible'><p>WooCommerce Gateway QPAY requires WooCommerce to be activated
 
 </p></div>";
     } );
+    */
     return;
 }
 
