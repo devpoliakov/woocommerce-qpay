@@ -5,8 +5,14 @@
  * Version: 1.0.1
  */
 
-if ( !class_exists( 'WooCommerce' ) ) 
-	return;
+if ( !class_exists( 'WooCommerce' )){
+    add_action( 'admin_notices', function(){
+    	echo "<div class='notice notice-warning is-dismissible'><p>WooCommerce Gateway QPAY requires WooCommerce to be activated
+
+</p></div>";
+    } );
+    return;
+}
 
  /*
  * This action hook registers our PHP class as a WooCommerce payment gateway
